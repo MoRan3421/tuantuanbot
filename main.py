@@ -16,7 +16,7 @@ logger = logging.getLogger("TuanBot")
 TOKEN = os.getenv("DISCORD_TOKEN", "")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 PREFIX = "!"
-APP_ID = "tuan-bot-v2"
+APP_ID = "tuan-bot-v1"
 
 # 模拟数据库
 db_state = {
