@@ -17,3 +17,6 @@ if [ ! -d "cogs" ]; then
 fi
 
 echo "--- 构建完成喵！ ---"
+
+#启动机器人
+python main.py
