@@ -1,1 +1,3 @@
-# tuantuanbot
+🍡 团团 (TuanTuan) Discord Bot 项目欢迎使用团团！这是一个集成了 AI 交互、远程 Web 管理面板 以及 多云服务支持 的高级 Discord 机器人。📁 目录结构说明App.jsx: 赛博朋克风格的可视化管理后台，用于监控团团的状态。main.py: 后端核心代码，处理 Discord 链接与 API 请求。commands.py: 团团的性格逻辑与自定义指令集。config.json: 存放你的 App ID、Token 等关键配置信息。database_manager.py: 处理团团的数据存储（服务器设置、用户金币等）。🚀 快速启动步骤环境准备:确保安装了 Python 3.9+ 和 Node.js 环境。pip install discord.py requests flask
+配置团团:打开 config.json，填入你的 Discord Bot Token 和 tuantuan-bot-v1 的 App ID。启动后端:python main.py
+启动管理面板:直接在支持 React 的环境中运行 App.jsx，默认连接到 localhost:8080。🛡️ 安全提示请勿将包含真实 Token 的 config.json 上传至任何公开代码库！团团的安全由主人守护哦~ ฅ•ω•ฅ

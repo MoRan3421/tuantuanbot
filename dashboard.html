@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>团团机器人仪表盘</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: white; font-family: 'PingFang SC', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400"><i class="fas fa-robot mr-2"></i>团团 Dashboard</h1>
+                <p class="text-slate-400">实时连接 Discord 数据库</p>
+            </div>
+            <div id="status-tag" class="px-4 py-1 bg-green-500/20 text-green-400 rounded-full border border-green-500/30 text-sm">
+                ● 后端已连接
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 搜索框 -->
+            <div class="glass p-6 rounded-3xl col-span-1 md:col-span-2">
+                <h3 class="mb-4 font-bold"><i class="fas fa-search mr-2"></i>查询用户数据</h3>
+                <div class="flex gap-2">
+                    <input id="userIdInput" type="text" placeholder="输入 Discord 用户 ID" class="bg-slate-800 border-none rounded-xl px-4 py-2 w-full focus:ring-2 ring-blue-500 outline-none">
+                    <button onclick="fetchUserData()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl transition-all">查询</button>
+                </div>
+            </div>
+
+            <!-- 数据结果 -->
+            <div id="resultCard" class="glass p-8 rounded-3xl hidden col-span-1 md:col-span-2">
+                <div class="flex items-center gap-6 mb-6">
+                    <div class="w-20 h-20 bg-blue-500 rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-blue-500/20">
+                        <i class="fas fa-user-astronaut"></i>
+                    </div>
+                    <div>
+                        <h2 id="res-id" class="text-2xl font-bold">---</h2>
+                        <span id="res-level" class="bg-blue-600 px-3 py-0.5 rounded text-xs">Lv. --</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-slate-800/50 p-4 rounded-2xl text-center">
+                        <p class="text-slate-400 text-sm mb-1">金币</p>
+                        <p id="res-coins" class="text-xl font-bold text-yellow-500">0</p>
+                    </div>
+                    <div class="bg-slate-800/50 p-4 rounded-2xl text-center">
+                        <p class="text-slate-400 text-sm mb-1">当前经验</p>
+                        <p id="res-exp" class="text-xl font-bold text-blue-400">0</p>
+                    </div>
+                    <div class="bg-slate-800/50 p-4 rounded-2xl text-center">
+                        <p class="text-slate-400 text-sm mb-1">违规数</p>
+                        <p id="res-warns" class="text-xl font-bold text-red-400">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchUserData() {
+            const id = document.getElementById('userIdInput').value;
+            if (!id) return alert("请输入有效 ID");
+            
+            try {
+                // 指向 main.py 中 Quart 开启的端口
+                const response = await fetch(`http://localhost:5000/api/user/${id}`);
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    document.getElementById('resultCard').classList.remove('hidden');
+                    document.getElementById('res-id').innerText = "用户: " + data.id;
+                    document.getElementById('res-level').innerText = "Lv." + data.level;
+                    document.getElementById('res-coins').innerText = data.coins;
+                    document.getElementById('res-exp').innerText = data.exp;
+                    document.getElementById('res-warns').innerText = data.warns;
+                } else {
+                    alert("未找到该用户，请确保他在频道里说过话！");
+                }
+            } catch (err) {
+                alert("无法连接到后端服务器，请确保 main.py 正在运行且 5000 端口已开放。");
+            }
+        }
+    </script>
+</body>
+</html>

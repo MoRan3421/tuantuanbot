@@ -1,0 +1,21 @@
+{
+  "bot_identity": {
+    "name": "团团 TuanTuan",
+    "app_id": "tuantuan-bot-v1",
+    "version": "1.2.5",
+    "prefix": "/"
+  },
+  "api_settings": {
+    "discord_token": "YOUR_DISCORD_TOKEN_HERE",
+    "google_cloud_key": "YOUR_GOOGLE_API_KEY_HERE",
+    "openai_key": "YOUR_OPENAI_KEY_HERE"
+  },
+  "visuals": {
+    "theme_color": "#FF69B4",
+    "avatar_url": "https://example.com/tuantuan-avatar.png"
+  },
+  "server_config": {
+    "port": 8080,
+    "debug_mode": true
+  }
+}
