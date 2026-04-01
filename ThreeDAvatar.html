@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>团团 3D 形象预览</title>
+    <style>
+        body { margin: 0; background: radial-gradient(circle, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #info { position: absolute; top: 20px; width: 100%; text-align: center; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .controls { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.3); padding: 10px; border-radius: 15px; backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🍡 团团 3D Live 预览</h1>
+        <p>拖拽鼠标旋转，滚动缩放</p>
+    </div>
+    
+    <div class="controls">
+        <button onclick="changeColor('#FF69B4')">粉色团团</button>
+        <button onclick="changeColor('#87CEEB')">天蓝团团</button>
+        <button onclick="bounce()">跳一下！</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, tuantuan, clock;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // 光源
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 2).normalize();
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+            // 制作“团团”本体 (一个Q弹的球体)
+            const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0xFF69B4, 
+                shininess: 100,
+                emissive: 0x220000 
+            });
+            tuantuan = new THREE.Mesh(geometry, material);
+            scene.add(tuantuan);
+
+            // 给团团加眼睛
+            const eyeGeo = new THREE.SphereGeometry(0.2, 16, 16);
+            const eyeMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
+            
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.6, 0.5, 1.2);
+            tuantuan.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.6, 0.5, 1.2);
+            tuantuan.add(rightEye);
+
+            clock = new THREE.Clock();
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+            
+            // 呼吸效果
+            tuantuan.scale.y = 1 + Math.sin(t * 2) * 0.05;
+            tuantuan.scale.x = 1 + Math.cos(t * 2) * 0.02;
+            tuantuan.position.y = Math.sin(t * 1.5) * 0.2;
+            
+            // 缓慢旋转
+            tuantuan.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
+        }
+
+        function changeColor(hex) {
+            tuantuan.material.color.set(hex);
+        }
+
+        function bounce() {
+            const startPos = tuantuan.position.y;
+            let vel = 0.2;
+            const jump = () => {
+                tuantuan.position.y += vel;
+                vel -= 0.015;
+                if(tuantuan.position.y > startPos) requestAnimationFrame(jump);
+                else tuantuan.position.y = startPos;
+            };
+            jump();
+        }
+
+        window.onload = init;
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
