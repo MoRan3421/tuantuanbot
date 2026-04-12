@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --panda-pink: #FFB7C5;
+  --panda-pink-light: #FFDDE2;
+  --panda-blue: #A2D2FF;
+  --panda-cream: #FEF9EF;
+  --panda-mint: #D0F4DE;
+  --panda-accent: #FF85A1;
+  --panda-dark: #4A4A4A;
+  --glass-card: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --text-primary: #4A4A4A;
+  --text-secondary: #7A7A7A;
+  --sidebar-width: 280px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Fredoka', 'Quicksand', sans-serif;
+  cursor: default;
+}
+
+body {
+  background: linear-gradient(135deg, var(--panda-cream) 0%, #FFF5F7 100%);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Kawaii Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background: var(--glass-card);
+  border-right: 2px solid var(--glass-border);
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  backdrop-filter: blur(15px);
+  border-radius: 0 40px 40px 0;
+  box-shadow: 10px 0 30px rgba(255, 183, 197, 0.1);
+}
+
+.sidebar-logo {
+  width: 90px;
+  height: 90px;
+  border-radius: 35px;
+  margin-bottom: 50px;
+  align-self: center;
+  box-shadow: 0 10px 25px rgba(255, 133, 161, 0.2);
+  border: 4px solid white;
+  transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.sidebar-logo:hover {
+  transform: scale(1.1) rotate(8deg);
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 18px 24px;
+  border-radius: 25px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  transition: 0.3s;
+  margin-bottom: 12px;
+}
+
+.sidebar-item:hover, .sidebar-item.active {
+  background: white;
+  color: var(--panda-accent);
+  box-shadow: 0 5px 15px rgba(255, 133, 161, 0.1);
+  transform: translateX(5px);
+}
+
+/* Main Cute Content Area */
+.main-content {
+  margin-left: var(--sidebar-width);
+  padding: 60px 80px;
+  width: calc(100% - var(--sidebar-width));
+}
+
+.section-card {
+  background: var(--glass-card);
+  border: 2px solid white;
+  border-radius: 50px;
+  padding: 50px;
+  margin-bottom: 40px;
+  position: relative;
+  overflow: hidden;
+  transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.03);
+}
+
+.section-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 25px 50px rgba(255, 183, 197, 0.15);
+}
+
+.card-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: var(--panda-dark);
+}
+
+/* Cute Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 30px;
+}
+
+.stat-box {
+  padding: 35px;
+  border-radius: 40px;
+  background: white;
+  border: 2px solid var(--panda-pink-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--panda-accent);
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--panda-cream); }
+::-webkit-scrollbar-thumb { background: var(--panda-pink); border-radius: 10px; border: 3px solid var(--panda-cream); }
+::-webkit-scrollbar-thumb:hover { background: var(--panda-accent); }
+
+/* Buttons */
+.btn-elite {
+  background: var(--panda-accent);
+  color: white;
+  padding: 18px 45px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: none;
+  box-shadow: 0 10px 20px rgba(255, 133, 161, 0.3);
+}
+
+.btn-elite:hover {
+  transform: scale(1.05) translateY(-3px);
+  box-shadow: 0 15px 30px rgba(255, 133, 161, 0.4);
+}
