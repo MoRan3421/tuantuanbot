@@ -419,9 +419,7 @@ client.on('messageCreate', async message => {
     }
 });
 
-const { startHttpServer } = require('./core/http-server');
-startHttpServer({ admin, db });
-
+// --- GLOBAL SUPREME HEARTBEAT ---
 const syncStats = async () => {
     try {
         const guildCount = client.guilds.cache.size;
@@ -431,18 +429,36 @@ const syncStats = async () => {
             guilds: guildCount,
             users: userCount,
             last_heartbeat: new Date(),
-            version: 'Supreme 7.0',
+            version: 'Supreme 8.0',
             status: 'online'
         }, { merge: true });
         
-        console.log(`📊 [Sync] Guilds: ${guildCount}, Users: ${userCount} | Status: Online`);
+        console.log(`📊 [Sync] Supreme Core Online | Active Guilds: ${guildCount}`);
     } catch (e) {
         console.error('❌ Stats Sync Error:', e.message);
     }
 };
 
-setInterval(syncStats, 900000); // Sync every 15 mins
-syncStats(); 
+// --- SUPREME CLOUD HEALING (24/7 SUPPORT) ---
+async function startSupremeCore() {
+    try {
+        console.log('◇ TuanTuan Cloud Engine: Priming for 24/7 operations...');
+        // Force bind port for cloud platforms (Render, Railway, etc.)
+        const fastExpress = require('express')();
+        fastExpress.get('/', (req, res) => res.status(200).send('<h1>Panda Cloud is ONLINE 🐼💎</h1>'));
+        fastExpress.listen(process.env.PORT || 8080, '0.0.0.0', () => {
+            console.log(`🚀 Heartbeat active on port ${process.env.PORT || 8080}`);
+        });
+
+        // Initialize Stats Sync
+        setInterval(syncStats, 900000); // 15 mins
+        syncStats();
+    } catch (e) {
+        console.error('❌ Cloud Launch Error:', e);
+    }
+}
+
+startSupremeCore();
 
 
 // Command counter and XP reward middleware
