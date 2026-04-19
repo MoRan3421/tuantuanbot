@@ -28,7 +28,7 @@ module.exports = {
 
         const response = await interaction.reply({ embeds: [embed], components: [row] });
 
-        const collector = response.createMessageComponentCollector({ time: 30000 });
+        const collector = response.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
             if (i.user.id !== interaction.user.id) return i.reply({ content: '哼，团团只听主人的话！', ephemeral: true });

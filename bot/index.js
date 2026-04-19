@@ -1,4 +1,6 @@
-require('dotenv').config({ path: '../.env' });
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: '../.env' });
+}
 const { Client, GatewayIntentBits, Collection, REST, Routes, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ActivityType, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -6,6 +8,7 @@ const admin = require('firebase-admin');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
 const { Player } = require('discord-player');
+const express = require('express');
 
 // --- FIREBASE ADMIN ---
 if (!admin.apps.length) {
@@ -24,19 +27,125 @@ const { askSupremeAI } = require('./core/ai-utils');
 async function getAIResponse(prompt, guildId = 'global') {
     try {
         const db = admin.firestore();
-        const guildDoc = await db.collection('guilds').doc(guildId).get();
-        const engineRaw = guildDoc.exists ? (guildDoc.data().aiEngine || 'GEMINI') : 'GEMINI';
-        const engine = String(engineRaw).toUpperCase();
+        let engine = 'GEMINI';
+        try {
+            const guildDoc = await db.collection('guilds').doc(guildId).get();
+            if (guildDoc.exists && guildDoc.data().aiEngine) {
+                engine = String(guildDoc.data().aiEngine).toUpperCase();
+            }
+        } catch (dbErr) {
+            console.error('Firebase DB Error in AI fetch (fallback to GEMINI):', dbErr.message);
+        }
         
         const { text } = await askSupremeAI(prompt, engine);
         return text;
     } catch (e) {
         console.error('❌ AI Core Failure:', e.message);
-        return '团团脑仁儿疼，思考不出来啦！(>_<)';
+        return '团团脑仁儿疼，可能 API 出错啦！(>_<)';
     }
 }
 
-// Create a new client instance
+const app = express();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const cors = require('cors');
+
+app.use(cors());
+app.use(express.json());
+
+// Firebase Auth Middleware
+async function verifyUser(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).send('Unauthorized');
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        req.user = decodedToken;
+        next();
+    } catch (e) {
+        res.status(403).send('Forbidden');
+    }
+}
+
+app.get('/', (req, res) => res.send('TuanTuan Supreme Core is Online 🍵'));
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
+// --- STRIPE COYOUT SESSION ---
+app.post('/api/stripe/create-checkout-session', verifyUser, async (req, res) => {
+    const { guildId, plan } = req.body;
+    const priceId = plan === 'lifetime' ? process.env.STRIPE_LIFETIME_PRICE : process.env.STRIPE_MONTHLY_PRICE;
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{ price: priceId, quantity: 1 }],
+            mode: 'payment',
+            success_url: `${process.env.WEB_URL}/success?guildId=${guildId}`,
+            cancel_url: `${process.env.WEB_URL}/cancel`,
+            metadata: { guildId, type: 'premium_upgrade' }
+        });
+        res.json({ url: session.url });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PREMIUM REDEEM ---
+app.post('/api/premium/redeem', verifyUser, async (req, res) => {
+    const { guildId, key } = req.body;
+    const db = admin.firestore();
+
+    try {
+        const keyRef = db.collection('premium_keys').doc(key);
+        const keyDoc = await keyRef.get();
+
+        if (!keyDoc.exists || keyDoc.data().used) {
+            return res.status(400).json({ error: '无效或已被领取的激活码 (QAQ)' });
+        }
+
+        await db.runTransaction(async (t) => {
+            t.update(keyRef, { used: true, usedBy: req.user.uid, usedIn: guildId, usedAt: admin.firestore.FieldValue.serverTimestamp() });
+            t.set(db.collection('guilds').doc(guildId), { isPremium: true, premiumSince: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- STRIPE WEBHOOK ---
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const guildId = session.metadata.guildId;
+        const db = admin.firestore();
+        
+        await db.collection('guilds').doc(guildId).set({
+            isPremium: true,
+            premiumSince: admin.firestore.FieldValue.serverTimestamp(),
+            lastPaymentId: session.payment_intent
+        }, { merge: true });
+
+        console.log(`💎 Premium activated for Guild: ${guildId}`);
+    }
+    res.json({ received: true });
+});
+
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+    console.log(`🚀 Elite Web API activated on port ${port}`);
+});
+
+// --- CORE BOT LOGIC ---
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -92,58 +201,69 @@ const DEFAULT_PREFIX = '!';
 
 async function getGuildConfig(guildId) {
     if (guildConfigs.has(guildId)) return guildConfigs.get(guildId);
-    const docRef = db.collection('guilds').doc(guildId);
-    const doc = await docRef.get();
-    if (!doc.exists) {
-        const defaultConfig = { prefix: DEFAULT_PREFIX, aiChannelId: null, isPremium: false, rainbowRoleId: null, aiEngine: 'GEMINI' };
-        await docRef.set(defaultConfig);
-        guildConfigs.set(guildId, defaultConfig);
-        return defaultConfig;
+    const defaultConfig = { prefix: DEFAULT_PREFIX, aiChannelId: null, isPremium: false, rainbowRoleId: null, aiEngine: 'GEMINI' };
+    try {
+        const docRef = db.collection('guilds').doc(guildId);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            await docRef.set(defaultConfig);
+            guildConfigs.set(guildId, defaultConfig);
+            return defaultConfig;
+        }
+        const data = Object.assign({}, defaultConfig, doc.data());
+        guildConfigs.set(guildId, data);
+        return data;
+    } catch (err) {
+        console.error('Firebase DB Error in getGuildConfig:', err.message);
+        return defaultConfig; // Fallback so commands don't crash everything!
     }
-    const data = doc.data();
-    guildConfigs.set(guildId, data);
-    return data;
 }
 
 // XP & Leveling Logic
 const userXpCache = new Map();
 async function giveXpAndRewards(guildId, userId, providedXp = null, providedBamboo = 0) {
-    const key = `${guildId}-${userId}`;
-    const now = Date.now();
-    if (!providedXp && userXpCache.has(key) && now - userXpCache.get(key) < 60000) return null;
-    if (!providedXp) userXpCache.set(key, now);
+    try {
+        const key = `${guildId}-${userId}`;
+        const now = Date.now();
+        if (!providedXp && userXpCache.has(key) && now - userXpCache.get(key) < 60000) return null;
+        if (!providedXp) userXpCache.set(key, now);
 
-    const docRef = db.collection('guilds').doc(guildId).collection('members').doc(userId);
-    const doc = await docRef.get();
-    let data = doc.exists ? doc.data() : { xp: 0, level: 1, bamboo: 0 };
-    
-    // Config for bonus
-    const guildConfig = await getGuildConfig(guildId);
-    const multiplier = guildConfig.isPremium ? 1.5 : 1;
+        const docRef = db.collection('guilds').doc(guildId).collection('members').doc(userId);
+        const doc = await docRef.get();
+        let data = doc.exists ? doc.data() : { xp: 0, level: 1, bamboo: 0 };
+        
+        // Config for bonus
+        const guildConfig = await getGuildConfig(guildId);
+        const multiplier = guildConfig.isPremium ? 1.5 : 1;
 
-    const xpToAdd = providedXp || (Math.floor(Math.random() * 15) + 10);
-    const finalXpGain = Math.ceil(xpToAdd * multiplier);
-    const finalBambooGain = Math.ceil(providedBamboo * multiplier);
+        const xpToAdd = providedXp || (Math.floor(Math.random() * 15) + 10);
+        const finalXpGain = Math.ceil(xpToAdd * multiplier);
+        const finalBambooGain = Math.ceil(providedBamboo * multiplier);
 
-    data.xp = (data.xp || 0) + finalXpGain;
-    data.bamboo = (data.bamboo || 0) + finalBambooGain;
+        data.xp = (data.xp || 0) + finalXpGain;
+        data.bamboo = (data.bamboo || 0) + finalBambooGain;
 
-    let leveledUp = false;
-    const nextLevelXp = (data.level || 1) * 250; 
-    if (data.xp >= nextLevelXp) {
-        data.level = (data.level || 1) + 1;
-        data.xp = 0;
-        leveledUp = true;
+        let leveledUp = false;
+        const nextLevelXp = (data.level || 1) * 250; 
+        if (data.xp >= nextLevelXp) {
+            data.level = (data.level || 1) + 1;
+            data.xp = 0;
+            leveledUp = true;
+        }
+
+        await docRef.set(data, { merge: true });
+        return leveledUp ? data.level : null;
+    } catch (e) {
+        console.error('❌ Interaction XP Error:', e.message);
+        return null;
     }
-
-    await docRef.set(data, { merge: true });
-    return leveledUp ? data.level : null;
 }
 
 client.once('ready', async () => {
     // ASYNC EXTRACTOR LOAD (Required for V7)
     console.log('🤖 正在加载音乐引擎...');
-    await player.extractors.loadDefault().catch(console.error);
+    const { DefaultExtractors } = require('@discord-player/extractor');
+    await player.extractors.loadMulti(DefaultExtractors).catch(console.error);
     
     console.log(`🐼 团团 Kawaii Core 启动成功！已上线为：${client.user.tag}`);
     client.user.setActivity('在竹林里打滚喵 | /help', { type: ActivityType.Playing });
@@ -332,8 +452,13 @@ client.on('interactionCreate', async interaction => {
         if (['play', 'skip', 'stop', 'queue', 'nowplaying'].includes(cmdName) && guildConfig.musicModule === 'DISABLED') {
             return interaction.reply({ content: '❌ 本服务器已关闭音乐系统模块。管理员可在 Elite Hub 后台重新开启。', ephemeral: true });
         }
-        if (['ask', 'chat', 'switch-ai'].includes(cmdName) && guildConfig.aiModule === 'DISABLED') {
-            return interaction.reply({ content: '❌ 本服务器已关闭 AI 对话模块。', ephemeral: true });
+        if (['ask', 'chat', 'switch-ai', 'ai-roast', 'ai-story', 'ai-summarize', 'ai-translate'].includes(cmdName)) {
+            if (guildConfig.aiModule === 'DISABLED') {
+                return interaction.reply({ content: '❌ 本服务器已关闭 AI 对话模块。', ephemeral: true });
+            }
+            if (guildConfig.aiChannelId && interaction.channel.id !== guildConfig.aiChannelId) {
+                return interaction.reply({ content: `❌ 呜呜，请前往专属的 <#${guildConfig.aiChannelId}> 频道使用 AI 功能喔！`, ephemeral: true });
+            }
         }
 
         // 2. Premium Check for Specific Restricted Commands

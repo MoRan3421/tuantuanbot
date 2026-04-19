@@ -1,0 +1,43 @@
+name: Deploy TuanTuan Bot to Cloud Run 24/7
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'bot/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Authorize Docker
+        run: gcloud auth configure-docker
+
+      - name: Build and Push
+        run: |
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/tuantuan-bot ./bot
+          docker push gcr.io/${{ env.PROJECT_ID }}/tuantuan-bot
+        env:
+          PROJECT_ID: tuantuanbot-28647
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy tuantuan-bot \
+            --image gcr.io/tuantuanbot-28647/tuantuan-bot \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --min-instances 1 \
+            --set-env-vars "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }},FIREBASE_PROJECT_ID=tuantuanbot-28647,FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},FIREBASE_PRIVATE_KEY=${{ secrets.FIREBASE_PRIVATE_KEY }},GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }},Groq_Cloud_API=${{ secrets.GROQ_API_KEY }}"

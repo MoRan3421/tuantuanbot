@@ -5,178 +5,261 @@ import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 注意：在实际运行前需要执行 flutterfire configure 初始化您的 Firebase
-  // await Firebase.initializeApp(); 
-  runApp(const TuanTuanSupremeApp());
+  // 注意：在实际运行前需要确保 lib/firebase_options.dart 存在，或者直接在这里硬编码配置
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyBvqS8HIJ-yacn_YQfGt49Pb6IVpXw4igE",
+      appId: "1:372694962939:android:47562947192843",
+      messagingSenderId: "372694962939",
+      projectId: "tuantuanbot-28647",
+    ),
+  );
+  runApp(const TuanTuanEliteApp());
 }
 
-class TuanTuanSupremeApp extends StatelessWidget {
-  const TuanTuanSupremeApp({super.key});
+class TuanTuanEliteApp extends StatelessWidget {
+  const TuanTuanEliteApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TuanTuan Elite Control',
+      debugShowCheckedModeBanner: false,
+      title: 'TuanTuan Elite Hub',
       theme: ThemeData(
         brightness: Brightness.dark,
-        primarySwatch: Colors.pink,
+        primaryColor: Colors.pinkAccent,
         textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+        scaffoldBackgroundColor: const Color(0xFF070707),
       ),
       home: const DashboardScreen(),
     );
   }
 }
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  @override
   Widget build(BuildContext context) {
+    final firestore = FirebaseFirestore.instance;
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200.0,
-            floating: false,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('团团至尊中控台 🐼', style: TextStyle(fontWeight: FontWeight.bold)),
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFff9a9e), Color(0xFFfad0c4)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.8, -0.8),
+            radius: 1.5,
+            colors: [Color(0xFF1A1012), Color(0xFF070707)],
+          ),
+        ),
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              _buildHeader(),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 30),
+                      _buildCloudStatusStream(firestore),
+                      const SizedBox(height: 40),
+                      Text('SUPREME ANALYTICS', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white24, letterSpacing: 4)),
+                      const SizedBox(height: 15),
+                      _buildStatsGridStream(firestore),
+                      const SizedBox(height: 40),
+                      Text('INTELLIGENCE CONTROL', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white24, letterSpacing: 4)),
+                      const SizedBox(height: 15),
+                      _buildBrainToggle(firestore),
+                      const SizedBox(height: 100), 
+                    ],
                   ),
                 ),
-                child: const Center(
-                  child: Icon(Icons.auto_awesome, size: 80, color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _triggerDeploy(context),
+        backgroundColor: Colors.pinkAccent,
+        icon: const Icon(Icons.bolt_rounded, color: Colors.white),
+        label: const Text('FORCE CLOUD SYNC', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+        elevation: 20,
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('TUANTUAN', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text('ELITE DASHBOARD V4.0', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.pinkAccent, letterSpacing: 2)),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.pinkAccent.withOpacity(0.5))),
+              child: const CircleAvatar(radius: 25, backgroundImage: NetworkImage('https://i.ibb.co/Lzdg1K6L/panda-logo.png')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCloudStatusStream(FirebaseFirestore firestore) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: firestore.collection('global_stats').doc('aggregate').snapshots(),
+      builder: (context, snapshot) {
+        final online = (snapshot.data?.data() as Map<String, dynamic>?)?['status'] == 'online';
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 12, height: 12,
+                decoration: BoxDecoration(
+                  color: online ? Colors.greenAccent : Colors.redAccent,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: (online ? Colors.greenAccent : Colors.redAccent).withOpacity(0.5), blurRadius: 10, spreadRadius: 2)],
                 ),
               ),
-            ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(online ? 'CLOUD SERVICE: ACTIVE' : 'CLOUD SERVICE: OFFLINE', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    Text('24/7 SUPREME ARCHITECTURE', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.3), fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  ],
+                ),
+              ),
+              Icon(Icons.shield_check_rounded, color: Colors.white.withOpacity(0.1), size: 40),
+            ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatsGridStream(FirebaseFirestore firestore) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: firestore.collection('global_stats').doc('aggregate').snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 15,
+          mainAxisSpacing: 15,
+          childAspectRatio: 1.5,
+          children: [
+            _buildStatItem('GUILDS', data['guilds']?.toString() ?? '--', Icons.dns),
+            _buildStatItem('COMMANDS', data['commands_processed']?.toString() ?? '--', Icons.zap),
+            _buildStatItem('USERS', data['users']?.toString() ?? '--', Icons.people),
+            _buildStatItem('LATENCY', '24ms', Icons.speed),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20, color: Colors.pinkAccent.withOpacity(0.5)),
+          const SizedBox(height: 8),
+          Text(value, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900)),
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white24, letterSpacing: 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrainToggle(FirebaseFirestore firestore) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: firestore.collection('config').doc('global').snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>?;
+        final currentEngine = data?['aiEngine'] ?? 'gemini';
+        return Column(
+          children: [
+            _buildBrainOption(
+              firestore, 'gemini', 'GOOGLE GEMINI PRO', 'Deep Reasoning & Context', 
+              Icons.blur_on_rounded, currentEngine == 'gemini', Colors.blueAccent
+            ),
+            const SizedBox(height: 12),
+            _buildBrainOption(
+              firestore, 'groq', 'GROQ HYPER-ENGINE', 'Ultra-Low Latency Ops', 
+              Icons.bolt_rounded, currentEngine == 'groq', Colors.orangeAccent
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBrainOption(FirebaseFirestore firestore, String id, String name, String sub, IconData icon, bool active, Color color) {
+    return InkWell(
+      onTap: () => firestore.collection('config').doc('global').update({'aiEngine': id}),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: active ? color.withOpacity(0.1) : Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: active ? color.withOpacity(0.5) : Colors.white.withOpacity(0.03), width: 2),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: active ? color : Colors.white24, size: 32),
+            const SizedBox(width: 20),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   _buildStatusSection(),
-                   const SizedBox(height: 24),
-                   const Text('🚀 快捷操作', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                   const SizedBox(height: 12),
-                   _buildActionGrid(),
-                   const SizedBox(height: 24),
-                   const Text('📊 实时日志流', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                   _buildLogPreview(),
+                  Text(name, style: TextStyle(fontWeight: FontWeight.w900, color: active ? Colors.white : Colors.white70)),
+                  Text(sub, style: TextStyle(fontSize: 10, color: active ? color.withOpacity(0.8) : Colors.white24)),
                 ],
               ),
             ),
-          ),
-        ],
+            if (active) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 24),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        label: const Text('重启云端 Bot'),
-        icon: const Icon(Icons.refresh),
+    );
+  }
+
+  void _triggerDeploy(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🚀 COMMAND SENT: Cloud Sync in progress...'),
         backgroundColor: Colors.pinkAccent,
-      ),
-    );
-  }
-
-  Widget _buildStatusSection() {
-    return Row(
-      children: [
-        _buildStatCard('服务器', '420', Icons.dns_rounded, Colors.blueAccent),
-        const SizedBox(width: 12),
-        _buildStatCard('活跃用户', '12,580', Icons.people_alt_rounded, Colors.orangeAccent),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 30),
-            const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            Text(label, style: TextStyle(color: Colors.grey[400])),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionGrid() {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.5,
-      children: [
-        _buildActionButton('发布全局公告', Icons.campaign_rounded, Colors.purpleAccent),
-        _buildActionButton('修改 AI 提示词', Icons.psychology_rounded, Colors.tealAccent),
-        _buildActionButton('生成精英卡密', Icons.vpn_key_rounded, Colors.amberAccent),
-        _buildActionButton('查看财务报表', Icons.payments_rounded, Colors.greenAccent),
-      ],
-    );
-  }
-
-  Widget _buildActionButton(String label, IconData icon, Color color) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogPreview() {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(16),
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: const SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('[00:15:20] 🟢 TuanTuan Core v8.0 is ONLINE', style: TextStyle(color: Colors.green, fontFamily: 'monospace')),
-            Text('[00:15:25] 📊 XP奖励分发完成: 42名玩家', style: TextStyle(color: Colors.white70, fontFamily: 'monospace')),
-            Text('[00:15:28] 🧠 AI 回答成功 (Llama-3.3)', style: TextStyle(color: Colors.blue, fontFamily: 'monospace')),
-            Text('[00:15:35] ⚠️ 跨服漫游：服务器A同步至服务器B', style: TextStyle(color: Colors.amber, fontFamily: 'monospace')),
-          ],
-        ),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
